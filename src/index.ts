@@ -1,16 +1,20 @@
-import { existsSync, writeFileSync, readFileSync } from 'fs';
 import { words_list, should_play_responses, display_texts } from '../constants/index.js';
 import { currentPlayerType, gameStateType } from '../config.js'
 
-if(!existsSync('./scoreBoard.json'))writeFileSync('./scoreBoard.json', JSON.stringify({ topScore:{player:null, score:0} }));
-let scoreBoard = JSON.parse(readFileSync('./scoreBoard.json').toString());// needs an interface?
 
 if (require.main === module) {
-  var readLine = require('readline').createInterface({input: process.stdin, output: process.stdout})
-  var { exec } = require("child_process");
+  const { existsSync, writeFileSync, readFileSync } = require('fs');
+  
+  if(!existsSync('./scoreBoard.json'))writeFileSync('./scoreBoard.json', JSON.stringify({ topScore:{player:null, score:0} }));
+  let scoreBoard = JSON.parse(readFileSync('./scoreBoard.json').toString());// needs an interface?
 
-  var terminalInput = (question:string):Promise<string> => new Promise( resolve => readLine.question( question, (res:string) => resolve(res) ) )
-  var clearTerminal = (time:number):Promise<void> => new Promise((resolve) => setTimeout( () => resolve(console.clear()), time * 1000));
+
+
+  const readLine = require('readline').createInterface({input: process.stdin, output: process.stdout})
+  const { exec } = require("child_process");
+
+  const terminalInput = (question:string):Promise<string> => new Promise( resolve => readLine.question( question, (res:string) => resolve(res) ) )
+  const clearTerminal = (time:number):Promise<void> => new Promise((resolve) => setTimeout( () => resolve(console.clear()), time * 1000));
   const setDisplayMessage = (msg:string):void => console.log(msg);
 
   (async ():Promise<void> => {
@@ -30,7 +34,7 @@ if (require.main === module) {
       setDisplayMessage(display_texts.ready_to_play);
       await clearTerminal(4.5);
 
-      playGame({ word, player, lives: word.length, points:0, guess: null, lettersGuessed: new Array(word.length).fill("_"), setDisplayMessage });
+      playGame({ word, player, lives: word.length, points:0, guess: null, lettersGuessed: new Array(word.length).fill("_"), setDisplayMessage,terminalInput,clearTerminal, scoreBoard, exec, readLine, writeFileSync});
 
     } else {
       setDisplayMessage(display_texts.quit_game);
@@ -41,7 +45,7 @@ if (require.main === module) {
 }
 
 const playGame = async (state:gameStateType): Promise<void> => {
-  let { player, lives, word, guess, lettersGuessed, points, setDisplayMessage } = state;
+  let { player, lives, word, guess, lettersGuessed, points, setDisplayMessage, scoreBoard, terminalInput, clearTerminal, exec, readLine, writeFileSync} = state;
   player = player.charAt(0).toUpperCase() + player.slice(1).toLowerCase()
   
   const { score:topScore, player:topPlayer } = scoreBoard.topScore;
@@ -123,6 +127,3 @@ const playGame = async (state:gameStateType): Promise<void> => {
     terminalInput && readLine.close();
   }
 };
-
-
-
