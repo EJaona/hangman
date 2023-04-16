@@ -33,6 +33,7 @@ if (require.main === module) {
       await clearTerminal(2);
       exitGame()
     }
+
   })();
 }    
 
@@ -60,6 +61,7 @@ class Hangman {
       highScore: scoreBoard[player] || 0 ,
       lives: this.word.length
     }
+
   }
   
   private displayHighScore = ():void => setDisplayMessage(`\x1b[4m${ this.topPlayer || 'TopScore' }\x1b[0m: \x1b[0m\x1b[33m${ this.topScore || 'None' }\x1b[0m | \x1b[0m\x1b[4m${ this.currentPlayer.name }\x1b[0m: \x1b[33m${ this.currentPlayer.highScore }\x1b[0m\n`);
@@ -136,6 +138,7 @@ class Hangman {
 
         }
       }
+      
     }else{
       setDisplayMessage(display_texts.quit_game);
       await clearTerminal(2);
