@@ -66,12 +66,11 @@ const playGame = async (state:gameStateType): Promise<void> => {
     if(guess === word){
       lettersGuessed = guess.split('');
     }else{
-      let indeciesOfPlayerGuessInRandomWord = word
+      let indicesOfPlayerGuessInRandomWord = word
         .split("")
-        .map((letter, index) => (guess === letter ? index : null))
-        .filter((indexes) => indexes != null);
+        .map((letter, index) => guess === letter && index)
   
-      indeciesOfPlayerGuessInRandomWord.forEach(
+      indicesOfPlayerGuessInRandomWord.forEach(
         (index) => (lettersGuessed[index] = guess)
       )
     }
