@@ -1,28 +1,23 @@
-const { existsSync, writeFileSync, readFileSync } = require('fs');
-const readLine = require('readline').createInterface({input: process.stdin, output: process.stdout})
-const { exec } = require("child_process");
-
+import { existsSync, writeFileSync, readFileSync } from 'fs';
+import { clearTerminal, terminalInput, setDisplayMessage, exitGame } from './helpers/terminalHelpers'
 import { words_list, should_play_responses, display_texts } from '../constants/index.js';
-import { currentPlayerType, gameStateType } from '../config.js'
+import type { currentPlayerObject } from "../types";
 
-if(!existsSync('./scoreBoard.json'))writeFileSync('./scoreBoard.json', JSON.stringify({ topScore:{player:null, score:0} }));
+if(!existsSync('./scoreBoard.json'))writeFileSync('./scoreBoard.json', JSON.stringify({ topScore:{ player:null, score:0 } }));
 let scoreBoard = JSON.parse(readFileSync('./scoreBoard.json').toString());
-
-const terminalInput = (question:string):Promise<string> => new Promise( resolve => readLine.question( question, (res:string) => resolve(res) ) )
-const clearTerminal = (time:number):Promise<void> => new Promise((resolve) => setTimeout( () => resolve(console.clear()), time * 1000));
-const setDisplayMessage = (msg:string):void => console.log(msg);
 
 if (require.main === module) {
   
   (async ():Promise<void> => {
     await clearTerminal(0);
-    if (should_play_responses.includes( (await terminalInput(`${ display_texts.should_play_game }:\n>>> `)).toLowerCase() )) {
 
-      let word = words_list[Math.floor(Math.random() * words_list.length)].toLowerCase();
+    if (should_play_responses.includes( (await terminalInput(`${ display_texts.should_play_game }:\n>>> `)).toLowerCase() )) {
       await clearTerminal(0);
-      
+
       let player = await terminalInput("What's your name, player?\n>>> ");
       player = player.charAt(0).toUpperCase() + player.slice(1).toLowerCase()
+      
+      const hangman = new Hangman(player)
       await clearTerminal(0);
 
       setDisplayMessage(`${scoreBoard[player]? 'Welcome back' : 'Ok, lets play'}, ${ player }!`);
@@ -30,102 +25,123 @@ if (require.main === module) {
       
       setDisplayMessage(display_texts.ready_to_play);
       await clearTerminal(4.5);
-
-      playGame({ word, player, lives: word.length, points:0, guess: null, lettersGuessed: new Array(word.length).fill("_")});
+      
+      hangman.playGame();
 
     } else {
       setDisplayMessage(display_texts.quit_game);
-      readLine.close()
       await clearTerminal(2);
+      exitGame()
     }
   })();
-}
+}    
 
-const playGame = async (state:gameStateType): Promise<void> => {
-  let { player, lives, word, guess, lettersGuessed, points } = state;
-  player = player.charAt(0).toUpperCase() + player.slice(1).toLowerCase()
-  
-  const { score:topScore, player:topPlayer } = scoreBoard.topScore;
-  const currentPlayer:currentPlayerType = { name: player, highScore: scoreBoard[player] || 0 }
+class Hangman {
 
-  const displayHighScore = ():void => setDisplayMessage(`\x1b[4m${ topPlayer || 'TopScore' }\x1b[0m: \x1b[0m\x1b[33m${ topScore || 'None' }\x1b[0m | \x1b[0m\x1b[4m${ currentPlayer.name }\x1b[0m: \x1b[33m${ currentPlayer.highScore }\x1b[0m\n`);
-  const displayGameData = ():void => setDisplayMessage(`Points: \x1b[32m${ points } \x1b[0m Word: \x1b[32m ${ lettersGuessed.join(" ") } \x1b[0m Lives: \x1b[32m${ lives }\x1b[0m\n`);
+  private topPlayer: string;
+  private topScore: number;
+  private points: number;
+  private currentPlayer: currentPlayerObject;
+  private lettersGuessed: any[];
+  private word: string;
+  private userGuess: string;
 
-  const updateScoreBoard = ():void => {
-    if(points > scoreBoard[currentPlayer.name] || !scoreBoard[currentPlayer.name]){
-      scoreBoard[currentPlayer.name] = points;
+  constructor(player:string){
+    this.word = words_list[Math.floor(Math.random() * words_list.length)].toLowerCase()
+    this.points = 0
+    this.userGuess = null
+    this.lettersGuessed = new Array(this.word.length).fill("_")
+
+    this.topPlayer = scoreBoard.topScore.player
+    this.topScore = scoreBoard.topScore.score
+    
+    this.currentPlayer = {
+      name: player.charAt(0).toUpperCase() + player.slice(1).toLowerCase(),
+      highScore: scoreBoard[player] || 0 ,
+      lives: this.word.length
     }
-    if(points > topScore){
-      scoreBoard.topScore.score = points;
-      scoreBoard.topScore.player = currentPlayer.name;
+  }
+  
+  private displayHighScore = ():void => setDisplayMessage(`\x1b[4m${ this.topPlayer || 'TopScore' }\x1b[0m: \x1b[0m\x1b[33m${ this.topScore || 'None' }\x1b[0m | \x1b[0m\x1b[4m${ this.currentPlayer.name }\x1b[0m: \x1b[33m${ this.currentPlayer.highScore }\x1b[0m\n`);
+
+  private displayGameData = ():void =>setDisplayMessage(`Points: \x1b[32m${ this.points } \x1b[0m Word: \x1b[32m ${ this.lettersGuessed.join(" ") } \x1b[0m Lives: \x1b[32m${ this.currentPlayer.lives }\x1b[0m\n`);
+
+  private updateScoreBoard = ():void => {
+    if(this.points > scoreBoard[this.currentPlayer.name] || !scoreBoard[this.currentPlayer.name]){
+      scoreBoard[this.currentPlayer.name] = this.points;
+      this.currentPlayer.highScore = scoreBoard[this.currentPlayer.name]
+
+    }
+    if(this.points > this.topScore){
+      scoreBoard.topScore.score = this.points;
+      scoreBoard.topScore.player = this.currentPlayer.name;
+      this.topScore = scoreBoard.topScore.score
+      this.topPlayer = scoreBoard.topScore.player
+
     }
     writeFileSync('./scoreBoard.json', JSON.stringify(scoreBoard) );
   }
 
-  const updateGame = async (): Promise<void> => { 
-    if(guess === word){
-      lettersGuessed = guess.split('');
+  private updateGame = async (): Promise<void> => { 
+   
+    if(this.userGuess === this.word){
+      this.lettersGuessed = this.userGuess.split('');
+
     }else{
-      let indeciesOfPlayerGuessInRandomWord = word
+      let indicesOfPlayerGuessInRandomWord = this.word
         .split("")
-        .map((letter, index) => (guess === letter ? index : null))
-        .filter((indexes) => indexes != null);
+        .map((letter, index) => this.userGuess === letter && index)
   
-      indeciesOfPlayerGuessInRandomWord.forEach(
-        (index) => (lettersGuessed[index] = guess)
+      indicesOfPlayerGuessInRandomWord.forEach(
+        index => this.lettersGuessed[index] = this.userGuess
       )
+
     }
-    updateScoreBoard()
-    displayHighScore();
-    displayGameData() 
+    this.updateScoreBoard();
+    this.displayHighScore();
+    this.displayGameData();
   }
 
-  await clearTerminal(0);
-  updateGame();
+  public playGame = async (): Promise<void> => {
+    await clearTerminal(0);
+    this.updateGame()
 
-  if(guess !== 'quit'){
-    if (!lives) {
+    if(this.userGuess !== 'quit'){
 
-      setDisplayMessage(display_texts.out_of_lives);
-      await clearTerminal(2);
-      exec('exit');
-      
-    } else if (guess === word || lettersGuessed.join('') === word) {
-
-      setDisplayMessage(`${display_texts.player_wins} ${word}`);
-      await clearTerminal(2);  
-
-      points += lives;
-      updateGame();
+      if (!this.currentPlayer.lives) {
+        setDisplayMessage(display_texts.out_of_lives);
+        await clearTerminal(2);
+        exitGame();
+        
+      } else if (this.userGuess === this.word || this.lettersGuessed.join('') === this.word) {
+        setDisplayMessage(`${display_texts.player_wins} ${ this.word }`);
+        await clearTerminal(2);  
   
-      let newWord = words_list[Math.floor(Math.random() * words_list.length)].toLowerCase();
-      return playGame({
-        ...state,
-        points,
-        word : newWord,
-        lives : newWord.length,
-        guess : null,
-        lettersGuessed : new Array(newWord.length).fill("_")
-      });
-  
-    } else {
-      if ( !guess || word.includes(guess)) {
-        playGame({ ...state, guess: (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() });
+        const currentPoints = this.points += this.currentPlayer.lives;
+        const nextGame = new Hangman(this.currentPlayer.name)
+        nextGame.points = currentPoints
+        nextGame.playGame()
+    
       } else {
 
-        --lives;
-        await clearTerminal(0);
+        if ( !this.userGuess || this.word.includes(this.userGuess)) {
+          this.userGuess = (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase();
+          this.playGame();
 
-        updateGame();
-        playGame({ ...state, lives, guess: (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() });
+        } else {
+          --this.currentPlayer.lives;
+          this.userGuess = null;
+          await clearTerminal(0); 
+          this.playGame();
+
+        }
       }
+    }else{
+      setDisplayMessage(display_texts.quit_game);
+      await clearTerminal(2);
+      exitGame();
+
     }
-  }else{
+  };
 
-    setDisplayMessage(display_texts.quit_game);
-    await clearTerminal(2);
-
-    exec('exit');
-    readLine.close();
-  }
-};
+}
