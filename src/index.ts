@@ -44,7 +44,7 @@ class Hangman {
   private topScore: number;
   private points: number;
   private currentPlayer: currentPlayerObject;
-  private lettersGuessed: any[];
+  private lettersGuessed: string[];
   private word: string;
   private userGuess: string;
 
