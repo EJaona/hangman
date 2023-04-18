@@ -5,7 +5,6 @@ export interface gameStateType {
     guess:null|string, 
     lettersGuessed:null|string[], 
     points:number, 
-    setDisplayMessage:(msg:string)=>void
 }
 
 export interface currentPlayerType {

@@ -1,18 +1,19 @@
-import { existsSync, writeFileSync, readFileSync } from 'fs';
+const { existsSync, writeFileSync, readFileSync } = require('fs');
+const readLine = require('readline').createInterface({input: process.stdin, output: process.stdout})
+const { exec } = require("child_process");
+
 import { words_list, should_play_responses, display_texts } from '../constants/index.js';
 import { currentPlayerType, gameStateType } from '../config.js'
 
 if(!existsSync('./scoreBoard.json'))writeFileSync('./scoreBoard.json', JSON.stringify({ topScore:{player:null, score:0} }));
-let scoreBoard = JSON.parse(readFileSync('./scoreBoard.json').toString());// needs an interface?
+let scoreBoard = JSON.parse(readFileSync('./scoreBoard.json').toString());
+
+const terminalInput = (question:string):Promise<string> => new Promise( resolve => readLine.question( question, (res:string) => resolve(res) ) )
+const clearTerminal = (time:number):Promise<void> => new Promise((resolve) => setTimeout( () => resolve(console.clear()), time * 1000));
+const setDisplayMessage = (msg:string):void => console.log(msg);
 
 if (require.main === module) {
-  var readLine = require('readline').createInterface({input: process.stdin, output: process.stdout})
-  var { exec } = require("child_process");
-
-  var terminalInput = (question:string):Promise<string> => new Promise( resolve => readLine.question( question, (res:string) => resolve(res) ) )
-  var clearTerminal = (time:number):Promise<void> => new Promise((resolve) => setTimeout( () => resolve(console.clear()), time * 1000));
-  const setDisplayMessage = (msg:string):void => console.log(msg);
-
+  
   (async ():Promise<void> => {
     await clearTerminal(0);
     if (should_play_responses.includes( (await terminalInput(`${ display_texts.should_play_game }:\n>>> `)).toLowerCase() )) {
@@ -30,7 +31,7 @@ if (require.main === module) {
       setDisplayMessage(display_texts.ready_to_play);
       await clearTerminal(4.5);
 
-      playGame({ word, player, lives: word.length, points:0, guess: null, lettersGuessed: new Array(word.length).fill("_"), setDisplayMessage });
+      playGame({ word, player, lives: word.length, points:0, guess: null, lettersGuessed: new Array(word.length).fill("_")});
 
     } else {
       setDisplayMessage(display_texts.quit_game);
@@ -41,7 +42,7 @@ if (require.main === module) {
 }
 
 const playGame = async (state:gameStateType): Promise<void> => {
-  let { player, lives, word, guess, lettersGuessed, points, setDisplayMessage } = state;
+  let { player, lives, word, guess, lettersGuessed, points } = state;
   player = player.charAt(0).toUpperCase() + player.slice(1).toLowerCase()
   
   const { score:topScore, player:topPlayer } = scoreBoard.topScore;
@@ -65,35 +66,35 @@ const playGame = async (state:gameStateType): Promise<void> => {
     if(guess === word){
       lettersGuessed = guess.split('');
     }else{
-      let indeciesOfPlayerGuessInRandomWord = word
+      let indicesOfPlayerGuessInRandomWord = word
         .split("")
-        .map((letter, index) => (guess === letter ? index : null))
-        .filter((indexes) => indexes != null);
+        .map((letter, index) => guess === letter && index)
   
-      indeciesOfPlayerGuessInRandomWord.forEach(
+      indicesOfPlayerGuessInRandomWord.forEach(
         (index) => (lettersGuessed[index] = guess)
       )
     }
     updateScoreBoard()
-    terminalInput && displayHighScore();
-    terminalInput 
-      ? displayGameData() 
-      : setDisplayMessage(`Points: ${ points } Word: ${ lettersGuessed.join(" ") } Lives: ${ lives }`);
+    displayHighScore();
+    displayGameData() 
   }
 
-  terminalInput && await clearTerminal(0);
+  await clearTerminal(0);
   updateGame();
 
   if(guess !== 'quit'){
     if (!lives) {
+
       setDisplayMessage(display_texts.out_of_lives);
-      terminalInput && await clearTerminal(2);
-      terminalInput && exec('exit');
+      await clearTerminal(2);
+      exec('exit');
       
     } else if (guess === word || lettersGuessed.join('') === word) {
+
       setDisplayMessage(`${display_texts.player_wins} ${word}`);
-      terminalInput && await clearTerminal(2);  
-      points = points + lives;
+      await clearTerminal(2);  
+
+      points += lives;
       updateGame();
   
       let newWord = words_list[Math.floor(Math.random() * words_list.length)].toLowerCase();
@@ -108,21 +109,22 @@ const playGame = async (state:gameStateType): Promise<void> => {
   
     } else {
       if ( !guess || word.includes(guess)) {
-        playGame({ ...state, guess: terminalInput? (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() : guess });
+        playGame({ ...state, guess: (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() });
       } else {
+
         --lives;
-        terminalInput && await clearTerminal(0);
+        await clearTerminal(0);
+
         updateGame();
-        playGame({ ...state, lives, guess: terminalInput? (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() : guess});
+        playGame({ ...state, lives, guess: (await terminalInput(`${display_texts.get_player_guess}:\n>>> `)).toLowerCase() });
       }
     }
   }else{
+
     setDisplayMessage(display_texts.quit_game);
-    terminalInput && await clearTerminal(2);
-    terminalInput && exec('exit');
-    terminalInput && readLine.close();
+    await clearTerminal(2);
+
+    exec('exit');
+    readLine.close();
   }
 };
-
-
-
