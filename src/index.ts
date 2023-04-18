@@ -50,7 +50,7 @@ class Hangman {
 
   constructor(player:string){
 
-    this.word = words_list._pickRandomWord()
+    this.word = words_list._pickRandomValue()
     this.points = 0
     this.userGuess = null
     this.lettersGuessed = new Array(this.word.length).fill("_")
@@ -72,10 +72,10 @@ class Hangman {
 
   private updateScoreBoard = ():void => {
 
-    if(this.points > scoreBoard[this.currentPlayer.name] || !scoreBoard[this.currentPlayer.name]){
+    if(this.points > this.currentPlayer.highScore || !this.currentPlayer.highScore){
 
       scoreBoard[this.currentPlayer.name] = this.points;
-      this.currentPlayer.highScore = scoreBoard[this.currentPlayer.name]
+      this.currentPlayer.highScore = this.points
 
     }
     if(this.points > this.topScore){
@@ -90,7 +90,7 @@ class Hangman {
     writeToFile('./scoreBoard.json', scoreBoard );
   }
 
-  private updateGame = async (): Promise<void> => { 
+  private updateGame = (): void => { 
    
     if(this.userGuess === this.word){
       this.lettersGuessed = this.userGuess.split('');
