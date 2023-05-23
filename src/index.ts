@@ -1,12 +1,12 @@
 import { words_list, should_play_responses, display_texts } from './constants/index.js';
-import type { currentPlayerObject } from "../types";
+import type { currentPlayerObject, topPlayerObject } from "../types";
 import { clearTerminal, terminalInput, displayMessage, exitGame, underline, colorYellow, colorGreen } from './helpers/terminalHelpers'
-import { createFileIfNotExists, readFromFile, writeToFile } from './helpers/fileSystemHelpers';
+import { createScoreboard, getTopScoreboard, getPlayerInScoreboard, updatePlayerScoreboard, updateTopScoreboard, getRanking, addPlayerToScoreboard } from './utils/scoreboard.js';
 import './helpers/stringHelpers';
 import './helpers/arrayHelpers';
 
-createFileIfNotExists('./scoreBoard.json', { topScore: { player: null, score: 0 } });
-let scoreBoard = readFromFile('./scoreBoard.json');
+createScoreboard()
+
 
 if (require.main === module) {
   
@@ -17,17 +17,16 @@ if (require.main === module) {
       await clearTerminal(0);
 
       let player = (await terminalInput("What's your name, player?"))._toCapitalize();
-      
-      const hangman = new Hangman(player)
+      const game = new Hangman(player)
       await clearTerminal(0);
 
-      displayMessage(`${ scoreBoard[player]? 'Welcome back' : 'Ok, lets play'}, ${ player }!`);
+      displayMessage(`${ getPlayerInScoreboard(player) ? 'Welcome back' : 'Ok, lets play'}, ${ player }!`);
       await clearTerminal(2);
       
       displayMessage(display_texts.ready_to_play);
       await clearTerminal(4.5);
       
-      hangman.playGame();
+     game.play();
 
     } else {
       displayMessage(display_texts.quit_game);
@@ -40,54 +39,47 @@ if (require.main === module) {
 
 class Hangman {
 
-  private topPlayer: string;
-  private topScore: number;
-  private points: number;
+  private word: string = words_list._pickRandomValue();
+  private points: number = 0;
+  private lives: number = 6;
+
+  private userGuess: string = null;
+  private lettersGuessed: string[] = new Array(this.word.length).fill("_");
+
+  private top:topPlayerObject = getTopScoreboard()
   private currentPlayer: currentPlayerObject;
-  private lettersGuessed: string[];
-  private word: string;
-  private userGuess: string;
 
   constructor(player:string){
+    createScoreboard()
+    player = player._toCapitalize()
+    addPlayerToScoreboard(player)
 
-    this.word = words_list._pickRandomValue()
-    this.points = 0
-    this.userGuess = null
-    this.lettersGuessed = new Array(this.word.length).fill("_")
-
-    this.topPlayer = scoreBoard.topScore.player
-    this.topScore = scoreBoard.topScore.score
-    
     this.currentPlayer = {
-      name: player._toCapitalize(),
-      highScore: scoreBoard[player] || 0 ,
-      lives: this.word.length
+      name: player,
+      highScore: getPlayerInScoreboard(player)
     }
 
   }
   
-  private displayHighScore = ():void => displayMessage(`${ underline( this.topPlayer || 'TopScore' ) }: ${ colorYellow( this.topScore || 'None') } | ${ underline(this.currentPlayer.name) }: ${ colorYellow(this.currentPlayer.highScore) }\n`);
+  private displayHighScore():void{ 
+    displayMessage(`${ underline( this.top.player ?? 'TopScore' ) }: ${ colorYellow( this.top.score ) } | ${ underline(this.currentPlayer.name) }: ${ colorYellow(this.currentPlayer.highScore) }\n`)
+  }
 
-  private displayGameData = ():void =>displayMessage(`Points:${ colorGreen(this.points) } Word:${ colorGreen(this.lettersGuessed.join(" ")._toCapitalize()) } Lives:${ colorGreen(this.currentPlayer.lives) }\n`);
+  private displayGameData():void {
+    displayMessage(`Points:${ colorGreen(this.points) } Word:${ colorGreen(this.lettersGuessed.join(" ")._toCapitalize()) } Lives:${ colorGreen(this.lives) }\n`)
+  }
 
   private updateScoreBoard = ():void => {
 
-    if(this.points > this.currentPlayer.highScore || !this.currentPlayer.highScore){
-
-      scoreBoard[this.currentPlayer.name] = this.points;
-      this.currentPlayer.highScore = this.points
-
+    if(this.points > this.currentPlayer.highScore){
+      const updatedPlayerScore = updatePlayerScoreboard(this.currentPlayer.name, this.points)
+      this.currentPlayer.highScore = updatedPlayerScore
     }
-    if(this.points > this.topScore){
 
-      scoreBoard.topScore.score = this.points;
-      scoreBoard.topScore.player = this.currentPlayer.name;
-
-      this.topScore = scoreBoard.topScore.score
-      this.topPlayer = scoreBoard.topScore.player
-
+    if(this.points > this.top.score){
+      const updatedTopScore = updateTopScoreboard(this.currentPlayer.name, this.points)
+      this.top = updatedTopScore
     }
-    writeToFile('./scoreBoard.json', scoreBoard );
   }
 
   private updateGame = (): void => { 
@@ -101,54 +93,89 @@ class Hangman {
       indicesOfPlayerGuessInRandomWord.forEach(
         index => this.lettersGuessed[index] = this.userGuess
       )
-
     }
     this.updateScoreBoard();
     this.displayHighScore();
     this.displayGameData();
   }
 
-  public playGame = async (): Promise<void> => {
+  public updateGuess = (guess:string|null = null):void => {
+    this.userGuess = guess
+  }
+
+  public resetWord = ():void => {
+    this.word = words_list._pickRandomValue();
+    this.lettersGuessed = new Array(this.word.length).fill("_");
+    this.updateGuess()
+  }
+
+  public resetLives = ():void => {
+    this.lives = 6
+  }
+
+  public decrementLives = ():void => {
+    this.lives--
+  }
+
+  public updatePoints = ():void => {
+    const currentPoints = this.points += this.lives;
+    this.points = currentPoints
+  }
+
+  public getState = (key: string | null = null) => {
+    if(key){
+      return this[key]
+    }
+    return this
+  }
+
+  public play = async ():Promise<void> => {
     await clearTerminal(0);
     this.updateGame()
 
-    if(this.userGuess !== 'quit'){
+    if(this.userGuess === 'rank'){
+      const rank = getRanking(this.currentPlayer.name)
+      displayMessage(`You are ${rank.player} out of ${rank.overAll}`)
+      this.updateGuess()
+      await clearTerminal(2)
+      return this.play()
+    }
 
-      if (!this.currentPlayer.lives) {
-        displayMessage(display_texts.out_of_lives);
-        await clearTerminal(2);
-        exitGame();
-        
-      } else if (this.userGuess === this.word || this.lettersGuessed.join('') === this.word) {
-        displayMessage(`${ display_texts.player_wins } ${ this.word._toCapitalize() }`);
-        await clearTerminal(2);  
-  
-        const currentPoints = this.points += this.currentPlayer.lives;
-        const nextGame = new Hangman(this.currentPlayer.name)
-        nextGame.points = currentPoints
-        nextGame.playGame()
-    
-      } else {
-
-        if ( !this.userGuess || this.word.includes(this.userGuess) ) {
-          this.userGuess = (await terminalInput(display_texts.get_player_guess)).toLowerCase();
-          this.playGame();
-
-        } else {
-          --this.currentPlayer.lives;
-          this.userGuess = null;
-          await clearTerminal(0); 
-          this.playGame();
-
-        }
-      }
-      
-    }else{
+    if(this.userGuess === 'quit'){
       displayMessage(display_texts.quit_game);
       await clearTerminal(2);
-      exitGame();
-
+      return exitGame();
     }
-  };
 
+    if (!this.lives) {
+      displayMessage(display_texts.out_of_lives);
+      await clearTerminal(2);
+      return exitGame();
+    }
+    
+    if (this.userGuess === this.word || this.lettersGuessed.join('') === this.word) {
+      displayMessage(`${ display_texts.player_wins } ${ this.word._toCapitalize() }`);
+      await clearTerminal(2);  
+
+      this.updatePoints()
+      this.resetWord()
+      this.resetLives()
+      return this.play()
+  
+    } 
+    
+    if ( !this.userGuess || this.word.includes(this.userGuess) ) {
+      const userInput = (await terminalInput(display_texts.get_player_guess)).toLowerCase()
+      this.updateGuess(userInput);
+      return this.play();
+
+    } 
+
+    this.decrementLives()
+    this.updateGuess()
+
+    await clearTerminal(0); 
+    return this.play();
+    
+  };
 }
