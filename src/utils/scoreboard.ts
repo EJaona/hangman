@@ -35,8 +35,7 @@ export const updateTopScoreboard = (player:string, score:number) => {
 
 export const getRanking = (playerName:string):rankingType => {
 
-    const sortedScoreboard = Object
-        .entries(scoreboard.scores)
+    const sortedScoreboard = Object.entries(scoreboard.scores)
         .sort((player1, player2) => {
             if(player1[1] > player2[1]) return 1
             return -1
