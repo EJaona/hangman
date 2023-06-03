@@ -6,4 +6,4 @@ export const createFileIfNotExists = ( filePath:string, data:Object ):void => {
 
 export const writeToFile = (path:string, data:Object):void => writeFileSync(path, JSON.stringify(data))
 
-export const readFromFile = (path:string):any => JSON.parse(readFileSync(path).toString())
+export const readFromFile = (path:string):any => JSON.parse(JSON.stringify(readFileSync(path)))

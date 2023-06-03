@@ -144,13 +144,13 @@ class Hangman {
       return this.play()
     } 
     
-    if ( this.game.isGuessInWord() || !this.game.guess ) {
+    if (this.game.isGuessInWord() || !this.game.guess) {
       const playerGuess = (await terminalInput(display_texts.get_player_guess));
       this.updateGuess(playerGuess);
       return this.play();
     } 
 
-    if( !this.game.isGuessInWord() ){
+    if(!this.game.isGuessInWord()){
       this.decrementLives()
       this.updateGuess()
       await clearTerminal(0); 
