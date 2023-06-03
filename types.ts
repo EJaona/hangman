@@ -11,8 +11,10 @@ export interface rankingType{
 
 export interface scoreboardType{
     topScore:{
-        player:string,
+        player:string
         score:number
     },
-    scores:{}
+    scores:{
+        playerScore:number
+    }
 }

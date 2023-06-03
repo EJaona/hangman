@@ -42,7 +42,6 @@ export const getRanking = (playerName:string):rankingType => {
             return -1
         }).reverse()
 
-    const playerRecord = sortedScoreboard.find(player => player[0] === playerName)
-    return { player:sortedScoreboard.indexOf(playerRecord) + 1, overAll:sortedScoreboard.length }
-
+    const [index] = sortedScoreboard.map((player, index) => player[0] === playerName && index )
+    return { player:index + 1, overAll:sortedScoreboard.length }
 }
