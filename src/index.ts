@@ -81,7 +81,7 @@ class Hangman {
     }
   }
 
-  private updateGame = (): void => { 
+  private updateGame = ():void => { 
     this.game.updateLettersGuessed()
     this.updateScoreBoard();
     this.displayHighScore();
