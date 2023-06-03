@@ -1,5 +1,5 @@
 interface Array<T> {
-    _pickRandomValue():string
+    _pickRandomValue():any
 }
 
-Array.prototype._pickRandomValue = function(this:string[]):string { return this[ Math.floor( Math.random() * this.length ) ] }
+Array.prototype._pickRandomValue = function(this:Array<any>):any { return this[ Math.floor( Math.random() * this.length ) ] }

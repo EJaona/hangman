@@ -9,13 +9,10 @@ export const clearTerminal = (time:number):Promise<void> => new Promise((resolve
 
 export const displayMessage = (msg:string):void => console.log(msg);
 
-export const exitGame = (): void => { readline.close(), exec('exit') };
+export const exitGame = ():void => { readline.close(), exec('exit') };
 
 export const underline = (value:string | number):string => `\x1b[4m${value}\x1b[0m`
 
 export const colorYellow = (value:string | number):string => ` \x1b[33m${value}\x1b[0m`
 
 export const colorGreen = (value:string | number):string => ` \x1b[32m${value}\x1b[0m`
-
-
-

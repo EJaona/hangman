@@ -1,19 +1,15 @@
-export interface currentPlayerObject {
-    name: string;
-    highScore: number;
-}
 
 export interface topPlayerObject{
     player: string
     score: number
 }
 
-export interface ranking{
-    player: string
+export interface rankingType{
+    player: number
     overAll: number
 }
 
-export interface scoreboard{
+export interface scoreboardType{
     topScore:{
         player:string,
         score:number

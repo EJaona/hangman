@@ -1,63 +1,48 @@
-import { ranking, scoreboard, topPlayerObject } from '../../types.js';
-import { createFileIfNotExists, readFromFile, writeToFile } from '../helpers/fileSystemHelpers.js';
+import { rankingType, scoreboardType, topPlayerObject } from '../../types.js';
+import { createFileIfNotExists, readFromFile, writeToFile } from './fsUtils.js';
 
-const scoreboardPath = 'scoreboard.json'
+const scoreboardPath = 'scoreboard.json';
+const scoreboard:scoreboardType = readFromFile(scoreboardPath);
 
-export const createScoreboard = () => {
+export const createScoreboard = (playerName:string):void => {
     createFileIfNotExists(scoreboardPath, { topScore: { player: null, score: 0 }, scores: {} });
+    addPlayerToScoreboardIfNotExists(playerName)
 }
 
-export const getPlayerInScoreboard = (playerName:string):number => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath);
-    return scoreboard.scores[playerName]
+export const getPlayerInScoreboardOrNull = (playerName:string):number => {
+    return scoreboard.scores[playerName] || null
 }
 
 export const getTopScoreboard = ():topPlayerObject => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath);
-    return scoreboard.topScore
+    return scoreboard.topScore || null
 }
 
-export const addPlayerToScoreboard = (playerName:string):void => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath);
-    if(!scoreboard.scores[playerName]){
-        scoreboard.scores[playerName] = 0
-    }
-    writeToFile(scoreboardPath, scoreboard)
+export const addPlayerToScoreboardIfNotExists = (playerName:string):void => {
+    !getPlayerInScoreboardOrNull(playerName) && updatePlayerScoreboard(playerName, 0)
 }
 
 export const updatePlayerScoreboard = (playerName:string, points:number):number => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath);
     scoreboard.scores[playerName] = points
     writeToFile(scoreboardPath, scoreboard)
     return scoreboard.scores[playerName]
 }
 
-export const updateTopScoreboard = (playerName:string, points:number) => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath);
-    scoreboard.topScore.player = playerName
-    scoreboard.topScore.score = points
+export const updateTopScoreboard = (player:string, score:number) => {
+    scoreboard.topScore = { player, score }
     writeToFile(scoreboardPath, scoreboard)
     return getTopScoreboard()
 }
 
-export const getRanking = (playerName:string):ranking => {
-    const scoreboard:scoreboard = readFromFile(scoreboardPath)
-    const rankingList = Object.values(scoreboard.scores).sort().reverse()
-    const playerRank = rankingList.indexOf(scoreboard.scores[playerName])
-    let rank:string;
-    switch(playerRank){
-        case 0:
-          rank = "1st"
-          break
-        case 1:
-          rank = "2nd"
-          break
-        case 2:
-          rank = "3nd"
-          break
-        default:
-          rank = `${playerRank}th`
-          break
-      }
-    return {player:rank, overAll:rankingList.length}
+export const getRanking = (playerName:string):rankingType => {
+
+    const sortedScoreboard = Object
+        .entries(scoreboard.scores)
+        .sort((player1, player2) => {
+            if(player1[1] > player2[1]) return 1
+            return -1
+        }).reverse()
+
+    const playerRecord = sortedScoreboard.find(player => player[0] === playerName)
+    return { player:sortedScoreboard.indexOf(playerRecord) + 1, overAll:sortedScoreboard.length }
+
 }
