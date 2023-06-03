@@ -41,8 +41,8 @@ if (require.main === module) {
 class Hangman {
   
   private game:Game = new Game()
-  private topRecord: TopRecord;
-  private player: Player;
+  private topRecord:TopRecord;
+  private player:Player;
 
   constructor(name:string){
     name = name._toCapitalize()
