@@ -1,17 +1,17 @@
-import { getTopScoreboard, updateTopScoreboard } from "../utils/scoreboard";
+import { getTopScoreboardOrNull, updateTopScoreboard } from "../utils/scoreboard";
 
 export class TopRecord{
 
-    player:string;
-    score:number;
+    public player:string;
+    public score:number;
 
     constructor(){
-        const { player, score } = getTopScoreboard()
-        this.player = player
-        this.score = score
+        const topRecord = getTopScoreboardOrNull()
+        this.player = topRecord?.player
+        this.score = topRecord?.score
     }
 
-    updateScoreboardTop(playerName:string, currentPoints:number):void{
+    public updateScoreboardTop(playerName:string, currentPoints:number):void{
         const { player, score } = updateTopScoreboard(playerName, currentPoints)
         this.player = player
         this.score = score

@@ -1,18 +1,22 @@
-import { getPlayerInScoreboardOrNull, updatePlayerScoreboard } from "../utils/scoreboard";
+import { getPlayerScoreboardRecordOrNull, getRanking, updatePlayerScoreboard } from "../utils/scoreboard";
 
 export class Player{
 
-    name:string;
-    topScore:number;
-    isNewPlayer:boolean
+    public name:string;
+    public scoreRecord:number;
+    public isNewPlayer:boolean
 
     constructor(playerName:string){
         this.name = playerName
-        this.topScore = getPlayerInScoreboardOrNull(playerName) ?? 0
-        this.isNewPlayer = !this.topScore
+        this.scoreRecord = getPlayerScoreboardRecordOrNull(playerName) ?? 0
+        this.isNewPlayer = !this.scoreRecord
     }
 
-    updateScoreboardScore(currentPoints:number){
-        this.topScore = updatePlayerScoreboard(this.name, currentPoints)
+    public updateScoreboardScore(currentPoints:number):void{
+        this.scoreRecord = updatePlayerScoreboard(this.name, currentPoints)
+    }
+
+    public getScoreboardRanking(){
+        return getRanking(this.name)
     }
 }

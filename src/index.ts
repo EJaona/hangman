@@ -1,11 +1,12 @@
 import { should_play_responses, display_texts } from './constants/index.js';
 import { clearTerminal, terminalInput, displayMessage, exitGame, underline, colorYellow, colorGreen } from './helpers/terminalHelpers'
-import { createScoreboard, getRanking } from './utils/scoreboard.js';
+import { createScoreboard } from './utils/scoreboard.js';
 import { Player } from './helpers/player';
 import { TopRecord } from './helpers/topRecord.js';
 import './helpers/stringHelpers';
 import './helpers/arrayHelpers';
-import { Game } from './helpers/game.js';
+import { GameProps } from './helpers/gameProps.js';
+import { GameState } from './helpers/gameState.js';
 
 
 if (require.main === module) {
@@ -20,7 +21,7 @@ if (require.main === module) {
       const game = new Hangman(player)
       await clearTerminal(0);
       
-      const { name : playerName, isNewPlayer } = game.getState('player')
+      const { name : playerName, isNewPlayer } = game.getState().player;
       displayMessage(`${ isNewPlayer ? display_texts.new_player: display_texts.returning_player}, ${ playerName }!`);
       await clearTerminal(2);
       
@@ -32,7 +33,7 @@ if (require.main === module) {
     } else {
       displayMessage(display_texts.quit_game);
       await clearTerminal(2);
-      exitGame()
+      exitGame();
     }
 
   })();
@@ -40,119 +41,115 @@ if (require.main === module) {
 
 class Hangman {
   
-  private game:Game = new Game()
-  private topRecord:TopRecord;
   private player:Player;
+  private topRecord:TopRecord
+  private gameProps:GameProps = new GameProps();
 
   constructor(name:string){
-    name = name._toCapitalize()
+    name = name._toCapitalize();
     createScoreboard(name);
-    this.topRecord = new TopRecord();
     this.player = new Player(name);
+    this.topRecord = new TopRecord();
   }
   
   private displayHighScore():void{ 
-    const topPlayer = `${underline( this.topRecord.player ?? 'TopScore' )}`
-    const topScore = `${colorYellow( this.topRecord.score )}`
-    const playerName = `${underline(this.player.name)}`
-    const playerScore = `${colorYellow(this.player.topScore)}`
+    const topPlayer = `${underline( this.topRecord.player ?? 'TopScore' )}`;
+    const topScore = `${colorYellow( this.topRecord.score )}`;
+    const playerName = `${underline(this.player.name)}`;
+    const playerScore = `${colorYellow(this.player.scoreRecord)}`;
 
     this.topRecord.player != this.player.name 
       ? displayMessage(`${topPlayer}:${topScore} | ${playerName}:${playerScore}\n`) 
-      : displayMessage(`${topPlayer}:${topScore}\n`)
+      : displayMessage(`${topPlayer}:${topScore}\n`);
   }
 
   private displayGameData():void {
-    const gamePoints = `Points:${ colorGreen(this.game.points) }`
-    const gameLives = `Lives:${ colorGreen(this.game.lives) }`
-    const lettersGuessed = `Word:${ colorGreen(this.game.formatLettersGuessed()) }`
+    const gamePoints:string = `Points:${ colorGreen(this.gameProps.points) }`;
+    const gameLives:string = `Lives:${ colorGreen(this.gameProps.lives) }`;
+    const lettersGuessed:string = `Word:${ colorGreen(this.gameProps.formatLettersGuessed()) }`;
 
-    displayMessage(`${gamePoints} ${lettersGuessed} ${gameLives}\n`)
+    displayMessage(`${gamePoints} ${lettersGuessed} ${gameLives}\n`);
   }
 
   private updateScoreBoard = ():void => {
 
-    if(this.game.points > this.player.topScore){
-      this.player.updateScoreboardScore(this.game.points)
+    if(this.gameProps.points > this.player.scoreRecord){
+      this.player.updateScoreboardScore(this.gameProps.points);
     }
 
-    if(this.game.points > this.topRecord.score){
-      this.topRecord.updateScoreboardTop(this.player.name, this.game.points)
+    if(this.gameProps.points > this.topRecord.score){
+      this.topRecord.updateScoreboardTop(this.player.name, this.gameProps.points);
     }
   }
 
   private updateGame = ():void => { 
-    this.game.updateLettersGuessed()
     this.updateScoreBoard();
     this.displayHighScore();
     this.displayGameData();
   }
 
-  public updateGuess = (playerGuess:string|null = null):void => {
-    this.game.setGuess(playerGuess)
+  public setGuessOrNull = (playerGuess:string|null = null):void => {
+    this.gameProps.setGuess(playerGuess);
   }
 
   public updatePoints = ():void => {
-    this.game.updatePoints()
+    this.gameProps.updatePoints();
   }
 
-  public resetGame = async():Promise<void> => {
-    this.game.reset()
+  public resetGame = ():void => {
+    this.gameProps.reset();
   }
 
   public decrementLives = ():void => {
-    this.game.decrementLives()
+    this.gameProps.decrementLives();
   }
 
-  public getState = (key?: string ) => {
-    if(key){
-      return this[key]
-    }
-    return this
+  public getState = ():GameState => {
+    return new GameState(this.gameProps, this.player, this.topRecord)
   }
 
   public play = async ():Promise<void> => {
     await clearTerminal(0);
-    this.updateGame()
+    this.updateGame();
     
-    if(this.game.guess === 'rank'){
-      const { player, overAll } = getRanking(this.player.name)
-      displayMessage(`You are ${ player } out of ${ overAll }`)
-      this.updateGuess()
-      await clearTerminal(2)
-      return this.play()
+    if(this.gameProps.guess === 'rank'){
+      const { player, overAll } = this.getState().ranking
+      displayMessage(`You are ${ player } out of ${ overAll }`);
+      this.setGuessOrNull();
+      await clearTerminal(2);
+      return this.play();
     }
 
-    if(this.game.guess === 'quit'){
+    if(this.gameProps.guess === 'quit'){
       displayMessage(display_texts.quit_game);
       await clearTerminal(2);
       return exitGame();
     }
 
-    if (!this.game.lives) {
+    if (!this.gameProps.lives) {
       displayMessage(display_texts.out_of_lives);
       await clearTerminal(2);
       return exitGame();
     }
     
-    if (this.game.isWordGuessed()) {
-      displayMessage(`${ display_texts.player_wins } ${ this.game.word }`);
+    if (this.gameProps.isWordGuessed()) {
+      displayMessage(`${ display_texts.player_wins } ${ this.gameProps.word }`);
       await clearTerminal(2);  
       
-      this.updatePoints()
-      this.resetGame()
-      return this.play()
+      this.updatePoints();
+      this.resetGame();
+      return this.play();
     } 
     
-    if (this.game.isGuessInWord() || !this.game.guess) {
+    if (this.gameProps.isGuessInWord() || !this.gameProps.guess) {
       const playerGuess = (await terminalInput(display_texts.get_player_guess));
-      this.updateGuess(playerGuess);
+      this.setGuessOrNull(playerGuess);
       return this.play();
     } 
 
-    if(!this.game.isGuessInWord()){
-      this.decrementLives()
-      this.updateGuess()
+    if(!this.gameProps.isGuessInWord()){
+      this.decrementLives();
+      this.setGuessOrNull();
       await clearTerminal(0); 
       return this.play();
     }
